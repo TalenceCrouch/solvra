@@ -10,3 +10,6 @@ dist/
 htmlcov/
 .coverage
 coverage.xml
+*.db
+*.sqlite
+*.sqlite3
