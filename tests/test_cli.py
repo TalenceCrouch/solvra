@@ -46,3 +46,11 @@ def test_status_does_not_print_raw_database_password() -> None:
 
     assert result.exit_code == 0
     assert "secret-password" not in result.output
+
+
+def test_cli_does_not_expose_future_workflow_commands() -> None:
+    result = runner.invoke(app, ["--help"])
+
+    assert result.exit_code == 0
+    for command in ("ingest", "replay", "reconcile", "report", "risk"):
+        assert command not in result.output
