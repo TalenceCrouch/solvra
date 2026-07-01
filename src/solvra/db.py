@@ -1,14 +1,12 @@
+from importlib import import_module
 from pathlib import Path
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.engine import make_url
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from solvra.config import Settings, load_settings
-
-
-class Base(DeclarativeBase):
-    pass
+from solvra.models.base import Base
 
 
 def create_database_engine(database_url: str) -> Engine:
@@ -35,5 +33,6 @@ def initialize_database(settings: Settings | None = None) -> Engine:
         database_path.parent.mkdir(parents=True, exist_ok=True)
 
     engine = create_database_engine(active_settings.database_url)
+    import_module("solvra.models")
     Base.metadata.create_all(engine)
     return engine

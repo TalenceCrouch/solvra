@@ -4,9 +4,9 @@ Echelon Proxy
 
 Solvra is a backend-heavy payments operations CLI for transaction syncing, webhook replay, ledger reconciliation, and revenue/risk analytics.
 
-Milestone 1 adds the first config and database foundation. It includes a Typer CLI, Rich terminal output, environment-based settings, a SQLAlchemy 2.x base/session setup, pytest tests, and ruff setup.
+Milestone 2 adds the first core payment and ledger schema. It includes a Typer CLI, Rich terminal output, environment-based settings, SQLAlchemy 2.x models, pytest tests, and ruff setup.
 
-Planned later: transaction syncing, webhook replay, ledger reconciliation, and revenue/risk analytics. There are no payment models or reconciliation workflows yet.
+Planned later: transaction syncing, webhook replay, ledger reconciliation, and revenue/risk analytics. There is no ingestion, replay, reconciliation, reporting, or payment processing logic yet.
 
 ## Install locally
 
