@@ -52,5 +52,17 @@ def test_cli_does_not_expose_future_workflow_commands() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("ingest", "replay", "reconcile", "report", "risk"):
+    for command in ("events", "replay", "reconcile", "revenue", "risk"):
         assert command not in result.output
+
+
+def test_ingest_exits_successfully(tmp_path) -> None:
+    database_path = tmp_path / "solvra-ingest.db"
+    result = runner.invoke(
+        app,
+        ["ingest", "samples/payments.json"],
+        env={"SOLVRA_DATABASE_URL": f"sqlite:///{database_path.as_posix()}"},
+    )
+
+    assert result.exit_code == 0
+    assert "Ingestion summary" in result.output

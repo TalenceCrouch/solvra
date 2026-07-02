@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import typer
 from rich.console import Console
 from rich.panel import Panel
@@ -6,6 +8,7 @@ from rich.table import Table
 from solvra import __version__
 from solvra.config import load_settings
 from solvra.db import initialize_database
+from solvra.ingest import IngestionValidationError, ingest_payments_file
 
 APP_NAME = "Solvra"
 APP_SUBTITLE = "Echelon Proxy"
@@ -53,6 +56,26 @@ def init_db() -> None:
     table.add_row("database backend", settings.database_backend)
 
     console.print(Panel(table, title="Database initialized"))
+
+
+@app.command()
+def ingest(path: Path) -> None:
+    """Ingest local fake payment data from a JSON file."""
+    try:
+        summary = ingest_payments_file(path)
+    except IngestionValidationError as exc:
+        console.print(f"[bold red]Ingestion failed:[/] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    table = Table(title="Ingestion summary")
+    table.add_column("record")
+    table.add_column("inserted", justify="right")
+    table.add_column("skipped", justify="right")
+
+    for label, inserted, skipped in summary.rows():
+        table.add_row(label, str(inserted), str(skipped))
+
+    console.print(table)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,60 @@
+{
+  "customers": [
+    {
+      "external_id": "cus_demo_001",
+      "email": "ada@example.test",
+      "name": "Ada Demo"
+    },
+    {
+      "external_id": "cus_demo_002",
+      "email": "grace@example.test",
+      "name": "Grace Demo"
+    }
+  ],
+  "merchant_accounts": [
+    {
+      "external_id": "acct_demo_001",
+      "name": "Solvra Demo Store",
+      "currency": "usd"
+    }
+  ],
+  "payments": [
+    {
+      "external_id": "pay_demo_001",
+      "customer_external_id": "cus_demo_001",
+      "merchant_account_external_id": "acct_demo_001",
+      "amount": "125.00",
+      "currency": "usd",
+      "status": "succeeded",
+      "description": "Demo checkout payment"
+    },
+    {
+      "external_id": "pay_demo_002",
+      "customer_external_id": "cus_demo_002",
+      "merchant_account_external_id": "acct_demo_001",
+      "amount": "84.50",
+      "currency": "usd",
+      "status": "pending",
+      "description": "Demo invoice payment"
+    },
+    {
+      "external_id": "pay_demo_003",
+      "customer_external_id": "cus_demo_001",
+      "merchant_account_external_id": "acct_demo_001",
+      "amount": "210.75",
+      "currency": "usd",
+      "status": "succeeded",
+      "description": "Demo subscription payment"
+    }
+  ],
+  "refunds": [
+    {
+      "external_id": "ref_demo_001",
+      "payment_external_id": "pay_demo_001",
+      "amount": "25.00",
+      "currency": "usd",
+      "reason": "requested_by_customer",
+      "status": "succeeded"
+    }
+  ]
+}
