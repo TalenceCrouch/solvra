@@ -56,6 +56,23 @@ def test_cli_does_not_expose_future_workflow_commands() -> None:
         assert command not in result.output
 
 
+def test_query_command_groups_appear_in_cli_help() -> None:
+    result = runner.invoke(app, ["--help"])
+
+    assert result.exit_code == 0
+    assert "payments" in result.output
+    assert "customers" in result.output
+    assert "refunds" in result.output
+
+
+def test_payment_commands_appear_in_help() -> None:
+    result = runner.invoke(app, ["payments", "--help"])
+
+    assert result.exit_code == 0
+    assert "list" in result.output
+    assert "show" in result.output
+
+
 def test_ingest_exits_successfully(tmp_path) -> None:
     database_path = tmp_path / "solvra-ingest.db"
     result = runner.invoke(
