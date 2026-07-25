@@ -1,0 +1,52 @@
+{
+  "events": [
+    {
+      "external_id": "evt_demo_001",
+      "event_type": "payment.created",
+      "source": "demo_gateway",
+      "payload": {
+        "payment_external_id": "pay_demo_001",
+        "customer_external_id": "cus_demo_001",
+        "amount": "125.00",
+        "currency": "usd",
+        "status": "created"
+      }
+    },
+    {
+      "external_id": "evt_demo_002",
+      "event_type": "payment.succeeded",
+      "source": "demo_gateway",
+      "payload": {
+        "payment_external_id": "pay_demo_001",
+        "customer_external_id": "cus_demo_001",
+        "amount": "125.00",
+        "currency": "usd",
+        "status": "succeeded"
+      }
+    },
+    {
+      "external_id": "evt_demo_003",
+      "event_type": "refund.created",
+      "source": "demo_gateway",
+      "payload": {
+        "refund_external_id": "ref_demo_001",
+        "payment_external_id": "pay_demo_001",
+        "amount": "25.00",
+        "currency": "usd",
+        "status": "created"
+      }
+    },
+    {
+      "external_id": "evt_demo_004",
+      "event_type": "refund.succeeded",
+      "source": "demo_gateway",
+      "payload": {
+        "refund_external_id": "ref_demo_001",
+        "payment_external_id": "pay_demo_001",
+        "amount": "25.00",
+        "currency": "usd",
+        "status": "succeeded"
+      }
+    }
+  ]
+}
