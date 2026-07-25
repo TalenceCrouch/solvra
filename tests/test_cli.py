@@ -52,7 +52,7 @@ def test_cli_does_not_expose_future_workflow_commands() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("events", "replay", "reconcile", "revenue", "risk"):
+    for command in ("replay", "reconcile", "revenue", "risk"):
         assert command not in result.output
 
 
@@ -63,12 +63,22 @@ def test_query_command_groups_appear_in_cli_help() -> None:
     assert "payments" in result.output
     assert "customers" in result.output
     assert "refunds" in result.output
+    assert "events" in result.output
 
 
 def test_payment_commands_appear_in_help() -> None:
     result = runner.invoke(app, ["payments", "--help"])
 
     assert result.exit_code == 0
+    assert "list" in result.output
+    assert "show" in result.output
+
+
+def test_event_commands_appear_in_help() -> None:
+    result = runner.invoke(app, ["events", "--help"])
+
+    assert result.exit_code == 0
+    assert "ingest" in result.output
     assert "list" in result.output
     assert "show" in result.output
 

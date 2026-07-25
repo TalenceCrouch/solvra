@@ -8,6 +8,12 @@ from rich.table import Table
 from solvra import __version__
 from solvra.config import load_settings
 from solvra.db import initialize_database
+from solvra.events import (
+    EventValidationError,
+    ingest_webhook_events_file,
+    list_webhook_events,
+    webhook_event_detail,
+)
 from solvra.ingest import IngestionValidationError, ingest_payments_file
 from solvra.queries import (
     list_customers,
@@ -23,11 +29,13 @@ app = typer.Typer(help="Solvra payments operations CLI.")
 payments_app = typer.Typer(help="Inspect local payment records.")
 customers_app = typer.Typer(help="Inspect local customer records.")
 refunds_app = typer.Typer(help="Inspect local refund records.")
+events_app = typer.Typer(help="Ingest and inspect local webhook events.")
 console = Console()
 
 app.add_typer(payments_app, name="payments")
 app.add_typer(customers_app, name="customers")
 app.add_typer(refunds_app, name="refunds")
+app.add_typer(events_app, name="events")
 
 
 @app.callback()
@@ -245,6 +253,80 @@ def list_refund_records() -> None:
         )
 
     console.print(table)
+
+
+@events_app.callback()
+def events() -> None:
+    """Ingest and inspect local webhook events."""
+
+
+@events_app.command("ingest")
+def ingest_webhook_events(path: Path) -> None:
+    """Ingest local fake webhook events from a JSON file."""
+    try:
+        summary = ingest_webhook_events_file(path)
+    except EventValidationError as exc:
+        console.print(f"[bold red]Event ingestion failed:[/] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    table = Table(title="Webhook event ingestion")
+    table.add_column("record")
+    table.add_column("inserted", justify="right")
+    table.add_column("skipped", justify="right")
+
+    for label, inserted, skipped in summary.rows():
+        table.add_row(label, str(inserted), str(skipped))
+
+    console.print(table)
+
+
+@events_app.command("list")
+def list_event_records() -> None:
+    """List webhook events in the configured database."""
+    events = list_webhook_events()
+    if not events:
+        console.print("No webhook events found.")
+        return
+
+    table = Table(title="Webhook events", padding=(0, 0))
+    table.add_column("external ID", no_wrap=True)
+    table.add_column("type", no_wrap=True)
+    table.add_column("source", no_wrap=True)
+    table.add_column("created", no_wrap=True)
+    table.add_column("processed", no_wrap=True)
+
+    for event in events:
+        table.add_row(
+            event.external_id,
+            event.event_type,
+            event.source or "",
+            format_timestamp(event.created_at),
+            event.processed,
+        )
+
+    console.print(table)
+
+
+@events_app.command("show")
+def show_event_record(external_id: str) -> None:
+    """Show webhook event details by external ID."""
+    event = webhook_event_detail(external_id)
+    if event is None:
+        console.print(f"[bold red]Webhook event not found:[/] {external_id}")
+        raise typer.Exit(code=1)
+
+    table = Table.grid(padding=(0, 2))
+    table.add_column(style="bold")
+    table.add_column()
+    table.add_row("external ID", event.external_id)
+    table.add_row("event type", event.event_type)
+    table.add_row("source", event.source or "")
+    table.add_row("processed", event.processed)
+    table.add_row("received", format_timestamp(event.received_at))
+    table.add_row("created", format_timestamp(event.created_at))
+
+    console.print(Panel(table, title=f"Webhook event {event.external_id}"))
+    console.print_json(data=event.payload)
 
 
 def format_money(amount) -> str:
