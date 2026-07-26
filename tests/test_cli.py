@@ -52,7 +52,7 @@ def test_cli_does_not_expose_future_workflow_commands() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("replay", "reconcile", "revenue", "risk"):
+    for command in ("reconcile", "revenue", "risk"):
         assert command not in result.output
 
 
@@ -80,6 +80,7 @@ def test_event_commands_appear_in_help() -> None:
     assert result.exit_code == 0
     assert "ingest" in result.output
     assert "list" in result.output
+    assert "replay" in result.output
     assert "show" in result.output
 
 
