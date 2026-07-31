@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -9,9 +10,13 @@ from solvra import __version__
 from solvra.config import load_settings
 from solvra.db import initialize_database
 from solvra.events import (
+    EventReplayError,
     EventValidationError,
+    ReplaySummary,
     ingest_webhook_events_file,
     list_webhook_events,
+    replay_webhook_event_by_id,
+    replay_webhook_events_by_type,
     webhook_event_detail,
 )
 from solvra.ingest import IngestionValidationError, ingest_payments_file
@@ -29,7 +34,7 @@ app = typer.Typer(help="Solvra payments operations CLI.")
 payments_app = typer.Typer(help="Inspect local payment records.")
 customers_app = typer.Typer(help="Inspect local customer records.")
 refunds_app = typer.Typer(help="Inspect local refund records.")
-events_app = typer.Typer(help="Ingest and inspect local webhook events.")
+events_app = typer.Typer(help="Ingest, inspect, and replay local webhook events.")
 console = Console()
 
 app.add_typer(payments_app, name="payments")
@@ -257,7 +262,7 @@ def list_refund_records() -> None:
 
 @events_app.callback()
 def events() -> None:
-    """Ingest and inspect local webhook events."""
+    """Ingest, inspect, and replay local webhook events."""
 
 
 @events_app.command("ingest")
@@ -327,6 +332,96 @@ def show_event_record(external_id: str) -> None:
 
     console.print(Panel(table, title=f"Webhook event {event.external_id}"))
     console.print_json(data=event.payload)
+
+
+@events_app.command("replay")
+def replay_event_records(
+    external_id: Annotated[
+        str | None,
+        typer.Argument(help="Webhook event external ID to replay."),
+    ] = None,
+    event_type: Annotated[
+        str | None,
+        typer.Option("--type", help="Replay stored events for this event type."),
+    ] = None,
+) -> None:
+    """Simulate replaying stored webhook events locally."""
+    if external_id and event_type:
+        console.print("[bold red]Replay failed:[/] provide an external ID or --type.")
+        raise typer.Exit(code=1)
+
+    if event_type:
+        replay_events_by_type(event_type)
+        return
+
+    if external_id:
+        replay_event_by_id(external_id)
+        return
+
+    console.print("[bold red]Replay failed:[/] provide an event external ID or --type.")
+    raise typer.Exit(code=1)
+
+
+def replay_event_by_id(external_id: str) -> None:
+    try:
+        result = replay_webhook_event_by_id(external_id)
+    except EventReplayError as exc:
+        console.print(f"[bold red]Replay failed:[/] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    table = Table.grid(padding=(0, 2))
+    table.add_column(style="bold")
+    table.add_column()
+    table.add_row("event external ID", result.external_id)
+    table.add_row("event type", result.event_type)
+    table.add_row("simulated handler", result.handler_name)
+    table.add_row("replay status", result.status)
+    table.add_row("message", result.message)
+
+    console.print(Panel(table, title=f"Webhook replay {result.external_id}"))
+    print_replay_counts(ReplaySummary(results=[result]))
+
+
+def replay_events_by_type(event_type: str) -> None:
+    try:
+        summary = replay_webhook_events_by_type(event_type)
+    except EventReplayError as exc:
+        console.print(f"[bold red]Replay failed:[/] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if not summary.results:
+        console.print(f"No webhook events found for type {event_type}.")
+        return
+
+    table = Table(title=f"Webhook replay: {event_type}", padding=(0, 0))
+    table.add_column("external ID", no_wrap=True)
+    table.add_column("event type", no_wrap=True)
+    table.add_column("handler", no_wrap=True)
+    table.add_column("status", no_wrap=True)
+    table.add_column("message")
+
+    for result in summary.results:
+        table.add_row(
+            result.external_id,
+            result.event_type,
+            result.handler_name,
+            result.status,
+            result.message,
+        )
+
+    console.print(table)
+    print_replay_counts(summary)
+
+
+def print_replay_counts(summary: ReplaySummary) -> None:
+    table = Table.grid(padding=(0, 2))
+    table.add_column(style="bold")
+    table.add_column()
+    table.add_row("processed", str(summary.processed))
+    table.add_row("skipped", str(summary.skipped))
+    table.add_row("failed", str(summary.failed))
+
+    console.print(Panel(table, title="Replay summary"))
 
 
 def format_money(amount) -> str:

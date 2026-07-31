@@ -4,9 +4,9 @@ Echelon Proxy
 
 Solvra is a backend-heavy payments operations CLI for transaction syncing, webhook replay, ledger reconciliation, and revenue/risk analytics.
 
-Milestone 5 adds local webhook event ingestion and read-only event inspection. It includes a Typer CLI, Rich terminal output, environment-based settings, SQLAlchemy 2.x models, fake sample data, pytest tests, and ruff setup.
+Milestone 6 adds a local webhook replay simulator. It includes a Typer CLI, Rich terminal output, environment-based settings, SQLAlchemy 2.x models, fake sample data, pytest tests, and ruff setup.
 
-Planned later: webhook replay, ledger reconciliation, and revenue/risk analytics. There is no replay, reconciliation, reporting, Stripe integration, or real payment processing logic yet.
+Planned later: ledger reconciliation and revenue/risk analytics. There is no reconciliation engine, reporting, Stripe integration, or real payment processing logic yet.
 
 ## Install locally
 
@@ -21,15 +21,17 @@ solvra status
 solvra init-db
 solvra ingest samples/payments.json
 solvra events ingest samples/webhook_events.json
+solvra events list
+solvra events show evt_demo_001
+solvra events replay evt_demo_001
+solvra events replay --type payment.succeeded
 solvra payments list
 solvra payments show pay_demo_001
 solvra customers list
 solvra refunds list
-solvra events list
-solvra events show evt_demo_001
 ```
 
-These commands use fake local data only. Solvra does not process real payments or connect to Stripe.
+Replay is a local simulation over stored fake webhook events. These commands use fake local data only. Solvra does not process real payments or connect to Stripe.
 
 ## Test
 
