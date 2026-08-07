@@ -8,6 +8,7 @@ EXPECTED_TABLES = {
     "ledger_entries",
     "merchant_accounts",
     "payments",
+    "reconciliation_runs",
     "refunds",
     "webhook_events",
 }

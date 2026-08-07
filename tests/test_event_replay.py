@@ -218,10 +218,9 @@ def test_future_workflow_commands_are_still_absent() -> None:
 
     assert root.exit_code == 0
     assert events.exit_code == 0
-    for command in ("reconcile", "revenue", "risk"):
+    for command in ("revenue", "risk"):
         assert command not in root.output
         assert command not in events.output
 
-    assert runner.invoke(app, ["reconcile", "run"]).exit_code != 0
     assert runner.invoke(app, ["revenue", "summary"]).exit_code != 0
     assert runner.invoke(app, ["risk", "scan"]).exit_code != 0

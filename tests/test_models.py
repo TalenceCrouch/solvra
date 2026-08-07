@@ -11,6 +11,7 @@ from solvra.models import (
     LedgerEntry,
     MerchantAccount,
     Payment,
+    ReconciliationRun,
     Refund,
     WebhookEvent,
 )
@@ -79,8 +80,20 @@ def test_core_models_insert_and_relationships_work(tmp_path) -> None:
             event_type="payment.succeeded",
             payload={"data": {"object": {"id": "pay_001"}}},
         )
+        reconciliation_run = ReconciliationRun(
+            external_id="rec_001",
+            status="completed",
+            payment_count=1,
+            refund_count=1,
+            webhook_event_count=1,
+            total_payment_amount=Decimal("42.25"),
+            total_refund_amount=Decimal("10.00"),
+            net_amount=Decimal("32.25"),
+            currency="usd",
+            summary_json={"net_amount": "32.25"},
+        )
 
-        session.add_all([payment_entry, refund_entry, webhook])
+        session.add_all([payment_entry, refund_entry, webhook, reconciliation_run])
         session.commit()
 
         loaded_payment = session.scalar(
@@ -99,6 +112,14 @@ def test_core_models_insert_and_relationships_work(tmp_path) -> None:
         assert loaded_payment.refunds[0].amount == Decimal("10.00")
         assert loaded_webhook is not None
         assert loaded_webhook.payload["data"]["object"]["id"] == "pay_001"
+        loaded_run = session.scalar(
+            select(ReconciliationRun).where(
+                ReconciliationRun.external_id == "rec_001",
+            ),
+        )
+        assert loaded_run is not None
+        assert loaded_run.net_amount == Decimal("32.25")
+        assert loaded_run.summary_json["net_amount"] == "32.25"
 
 
 def test_unique_external_id_constraints_are_enforced(tmp_path) -> None:

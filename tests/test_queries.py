@@ -154,5 +154,5 @@ def test_future_workflow_commands_still_absent() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("reconcile", "revenue", "risk"):
+    for command in ("revenue", "risk"):
         assert command not in result.output
