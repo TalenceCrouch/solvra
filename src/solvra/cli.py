@@ -26,6 +26,13 @@ from solvra.queries import (
     list_refunds,
     payment_detail,
 )
+from solvra.reconcile import (
+    ReconciliationRunNotFoundError,
+    ReconciliationRunSummary,
+    create_reconciliation_run,
+    get_reconciliation_run,
+    list_reconciliation_runs,
+)
 
 APP_NAME = "Solvra"
 APP_SUBTITLE = "Echelon Proxy"
@@ -35,12 +42,14 @@ payments_app = typer.Typer(help="Inspect local payment records.")
 customers_app = typer.Typer(help="Inspect local customer records.")
 refunds_app = typer.Typer(help="Inspect local refund records.")
 events_app = typer.Typer(help="Ingest, inspect, and replay local webhook events.")
+reconcile_app = typer.Typer(help="Create and inspect local reconciliation runs.")
 console = Console()
 
 app.add_typer(payments_app, name="payments")
 app.add_typer(customers_app, name="customers")
 app.add_typer(refunds_app, name="refunds")
 app.add_typer(events_app, name="events")
+app.add_typer(reconcile_app, name="reconcile")
 
 
 @app.callback()
@@ -424,12 +433,110 @@ def print_replay_counts(summary: ReplaySummary) -> None:
     console.print(Panel(table, title="Replay summary"))
 
 
+@reconcile_app.callback()
+def reconcile() -> None:
+    """Create and inspect local reconciliation runs."""
+
+
+@reconcile_app.command("run")
+def run_reconciliation() -> None:
+    """Create a local reconciliation run summary."""
+    summary = create_reconciliation_run()
+    print_reconciliation_summary(
+        summary, title=f"Reconciliation run {summary.external_id}"
+    )
+
+
+@reconcile_app.command("history")
+def list_reconciliation_history() -> None:
+    """List previous reconciliation run summaries."""
+    runs = list_reconciliation_runs()
+    if not runs:
+        console.print("No reconciliation runs found.")
+        return
+
+    table = Table(title="Reconciliation runs", padding=(0, 0))
+    table.add_column("run ID", no_wrap=True)
+    table.add_column("status", no_wrap=True)
+    table.add_column("payments", justify="right", no_wrap=True)
+    table.add_column("refunds", justify="right", no_wrap=True)
+    table.add_column("net", justify="right", no_wrap=True)
+    table.add_column("created", no_wrap=True)
+    table.add_column("completed", no_wrap=True)
+
+    for run in runs:
+        table.add_row(
+            run.external_id,
+            run.status,
+            str(run.payment_count),
+            str(run.refund_count),
+            format_money(run.net_amount),
+            format_history_timestamp(run.created_at),
+            format_optional_history_timestamp(run.completed_at),
+        )
+
+    console.print(table)
+
+
+@reconcile_app.command("show")
+def show_reconciliation_run(run_id: str) -> None:
+    """Show a reconciliation run by external ID."""
+    try:
+        summary = get_reconciliation_run(run_id)
+    except ReconciliationRunNotFoundError as exc:
+        console.print(f"[bold red]Reconciliation run not found:[/] {run_id}")
+        raise typer.Exit(code=1) from exc
+
+    print_reconciliation_summary(
+        summary, title=f"Reconciliation run {summary.external_id}"
+    )
+
+
+def print_reconciliation_summary(
+    summary: ReconciliationRunSummary,
+    title: str,
+) -> None:
+    table = Table.grid(padding=(0, 2))
+    table.add_column(style="bold")
+    table.add_column()
+    table.add_row("run ID", summary.external_id)
+    table.add_row("status", summary.status)
+    table.add_row("payment count", str(summary.payment_count))
+    table.add_row("refund count", str(summary.refund_count))
+    table.add_row("webhook event count", str(summary.webhook_event_count))
+    table.add_row("total payment amount", format_money(summary.total_payment_amount))
+    table.add_row("total refund amount", format_money(summary.total_refund_amount))
+    table.add_row("net amount", format_money(summary.net_amount))
+    table.add_row("currency", summary.currency or "")
+    table.add_row("started", format_timestamp(summary.started_at))
+    table.add_row("completed", format_optional_timestamp(summary.completed_at))
+    table.add_row("created", format_timestamp(summary.created_at))
+
+    console.print(Panel(table, title=title))
+
+
 def format_money(amount) -> str:
     return f"{amount:.2f}"
 
 
 def format_timestamp(value) -> str:
     return value.isoformat(sep=" ", timespec="minutes")
+
+
+def format_optional_timestamp(value) -> str:
+    if value is None:
+        return ""
+    return format_timestamp(value)
+
+
+def format_history_timestamp(value) -> str:
+    return value.strftime("%m-%d %H:%M")
+
+
+def format_optional_history_timestamp(value) -> str:
+    if value is None:
+        return ""
+    return format_history_timestamp(value)
 
 
 def format_customer_detail(

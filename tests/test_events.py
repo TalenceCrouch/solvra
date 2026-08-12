@@ -209,6 +209,6 @@ def test_future_event_workflow_commands_still_absent() -> None:
 
     assert root.exit_code == 0
     assert events.exit_code == 0
-    for command in ("reconcile", "revenue", "risk"):
+    for command in ("revenue", "risk"):
         assert command not in root.output
         assert command not in events.output
