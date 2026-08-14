@@ -16,6 +16,7 @@ from solvra.reconcile import (
     ReconciliationRunNotFoundError,
     create_reconciliation_run,
     get_reconciliation_run,
+    list_latest_reconciliation_mismatches,
     list_reconciliation_runs,
 )
 
@@ -72,6 +73,7 @@ def test_reconcile_command_group_appears_in_cli_help() -> None:
     assert "reconcile" in root.output
     assert "run" in reconcile.output
     assert "history" in reconcile.output
+    assert "mismatches" in reconcile.output
     assert "show" in reconcile.output
 
 
@@ -85,6 +87,7 @@ def test_reconcile_run_creates_completed_summary(tmp_path) -> None:
     assert summary.payment_count == 3
     assert summary.refund_count == 1
     assert summary.webhook_event_count == 4
+    assert summary.mismatch_count == 1
     assert summary.currency == "usd"
     assert summary.completed_at is not None
 
@@ -101,6 +104,7 @@ def test_reconcile_run_stores_decimal_totals_and_net_amount(tmp_path) -> None:
     assert summary.total_refund_amount == Decimal("25.00")
     assert summary.net_amount == Decimal("395.25")
     assert summary.summary_json["net_amount"] == "395.25"
+    assert summary.summary_json["mismatch_count"] == 1
 
 
 def test_reconcile_run_on_empty_database_does_not_crash(tmp_path) -> None:
@@ -113,6 +117,7 @@ def test_reconcile_run_on_empty_database_does_not_crash(tmp_path) -> None:
     assert summary.payment_count == 0
     assert summary.refund_count == 0
     assert summary.webhook_event_count == 0
+    assert summary.mismatch_count == 0
     assert summary.total_payment_amount == Decimal("0.00")
     assert summary.total_refund_amount == Decimal("0.00")
     assert summary.net_amount == Decimal("0.00")
@@ -133,6 +138,7 @@ def test_reconcile_history_lists_previous_runs(tmp_path) -> None:
     }
     assert all(row.status == "completed" for row in rows)
     assert all(row.net_amount == Decimal("395.25") for row in rows)
+    assert all(row.mismatch_count == 1 for row in rows)
 
 
 def test_reconcile_history_handles_no_runs_cleanly(tmp_path) -> None:
@@ -157,6 +163,8 @@ def test_reconcile_show_displays_run_details(tmp_path) -> None:
     assert summary.external_id in result.output
     assert "completed" in result.output
     assert "395.25" in result.output
+    assert "mismatch count" in result.output
+    assert "missing_payment_succeeded_event" in result.output
     assert "usd" in result.output
 
 
@@ -187,6 +195,7 @@ def test_reconcile_run_does_not_mutate_domain_records(tmp_path) -> None:
 
     create_reconciliation_run(settings)
     list_reconciliation_runs(settings)
+    list_latest_reconciliation_mismatches(settings)
 
     assert domain_counts(settings) == before
 
@@ -218,11 +227,16 @@ def test_reconcile_cli_workflow_works_with_existing_commands(tmp_path) -> None:
     run = runner.invoke(app, ["reconcile", "run"], env=env)
     assert run.exit_code == 0
     assert "395.25" in run.output
+    assert "mismatch count" in run.output
     run_id = run_id_from_output(run.output)
 
     history = runner.invoke(app, ["reconcile", "history"], env=env)
     assert history.exit_code == 0
     assert run_id in history.output
+
+    mismatches = runner.invoke(app, ["reconcile", "mismatches"], env=env)
+    assert mismatches.exit_code == 0
+    assert "missing_payment_succeeded_event" in mismatches.output
 
     show = runner.invoke(app, ["reconcile", "show", run_id], env=env)
     assert show.exit_code == 0
