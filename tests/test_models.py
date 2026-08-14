@@ -11,6 +11,7 @@ from solvra.models import (
     LedgerEntry,
     MerchantAccount,
     Payment,
+    ReconciliationMismatch,
     ReconciliationRun,
     Refund,
     WebhookEvent,
@@ -86,11 +87,24 @@ def test_core_models_insert_and_relationships_work(tmp_path) -> None:
             payment_count=1,
             refund_count=1,
             webhook_event_count=1,
+            mismatch_count=1,
             total_payment_amount=Decimal("42.25"),
             total_refund_amount=Decimal("10.00"),
             net_amount=Decimal("32.25"),
             currency="usd",
             summary_json={"net_amount": "32.25"},
+            mismatches=[
+                ReconciliationMismatch(
+                    external_id="mis_001",
+                    mismatch_type="missing_payment_succeeded_event",
+                    severity="warning",
+                    entity_type="payment",
+                    entity_external_id="pay_001",
+                    expected="payment.succeeded webhook",
+                    actual="missing",
+                    message="Payment pay_001 is missing a succeeded event.",
+                ),
+            ],
         )
 
         session.add_all([payment_entry, refund_entry, webhook, reconciliation_run])
@@ -120,6 +134,7 @@ def test_core_models_insert_and_relationships_work(tmp_path) -> None:
         assert loaded_run is not None
         assert loaded_run.net_amount == Decimal("32.25")
         assert loaded_run.summary_json["net_amount"] == "32.25"
+        assert loaded_run.mismatches[0].external_id == "mis_001"
 
 
 def test_unique_external_id_constraints_are_enforced(tmp_path) -> None:

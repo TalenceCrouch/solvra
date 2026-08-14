@@ -27,10 +27,12 @@ from solvra.queries import (
     payment_detail,
 )
 from solvra.reconcile import (
+    ReconciliationMismatchRow,
     ReconciliationRunNotFoundError,
     ReconciliationRunSummary,
     create_reconciliation_run,
     get_reconciliation_run,
+    list_latest_reconciliation_mismatches,
     list_reconciliation_runs,
 )
 
@@ -460,6 +462,7 @@ def list_reconciliation_history() -> None:
     table.add_column("status", no_wrap=True)
     table.add_column("payments", justify="right", no_wrap=True)
     table.add_column("refunds", justify="right", no_wrap=True)
+    table.add_column("mis", justify="right", no_wrap=True)
     table.add_column("net", justify="right", no_wrap=True)
     table.add_column("created", no_wrap=True)
     table.add_column("completed", no_wrap=True)
@@ -470,6 +473,7 @@ def list_reconciliation_history() -> None:
             run.status,
             str(run.payment_count),
             str(run.refund_count),
+            str(run.mismatch_count),
             format_money(run.net_amount),
             format_history_timestamp(run.created_at),
             format_optional_history_timestamp(run.completed_at),
@@ -490,6 +494,21 @@ def show_reconciliation_run(run_id: str) -> None:
     print_reconciliation_summary(
         summary, title=f"Reconciliation run {summary.external_id}"
     )
+    print_reconciliation_mismatches(summary.mismatches)
+
+
+@reconcile_app.command("mismatches")
+def list_reconciliation_mismatches() -> None:
+    """List mismatches from the latest reconciliation run."""
+    result = list_latest_reconciliation_mismatches()
+    if result.run_external_id is None:
+        console.print("No reconciliation runs found.")
+        return
+    if not result.mismatches:
+        console.print("No reconciliation mismatches found.")
+        return
+
+    print_reconciliation_mismatches(result.mismatches)
 
 
 def print_reconciliation_summary(
@@ -504,6 +523,7 @@ def print_reconciliation_summary(
     table.add_row("payment count", str(summary.payment_count))
     table.add_row("refund count", str(summary.refund_count))
     table.add_row("webhook event count", str(summary.webhook_event_count))
+    table.add_row("mismatch count", str(summary.mismatch_count))
     table.add_row("total payment amount", format_money(summary.total_payment_amount))
     table.add_row("total refund amount", format_money(summary.total_refund_amount))
     table.add_row("net amount", format_money(summary.net_amount))
@@ -513,6 +533,40 @@ def print_reconciliation_summary(
     table.add_row("created", format_timestamp(summary.created_at))
 
     console.print(Panel(table, title=title))
+
+
+def print_reconciliation_mismatches(
+    mismatches: list[ReconciliationMismatchRow],
+) -> None:
+    if not mismatches:
+        return
+
+    table = Table(title="Reconciliation mismatches", padding=(0, 0))
+    table.add_column("run ID", no_wrap=True)
+    table.add_column("mismatch ID")
+    table.add_column("type")
+    table.add_column("severity", no_wrap=True)
+    table.add_column("entity")
+    table.add_column("external ID")
+    table.add_column("message")
+
+    for mismatch in mismatches:
+        table.add_row(
+            mismatch.run_external_id,
+            mismatch.external_id,
+            mismatch.mismatch_type,
+            mismatch.severity,
+            mismatch.entity_type,
+            mismatch.entity_external_id,
+            mismatch.message,
+        )
+
+    console.print(table)
+    for mismatch in mismatches:
+        console.print(
+            f"{mismatch.external_id}: {mismatch.mismatch_type} "
+            f"{mismatch.entity_type} {mismatch.entity_external_id}",
+        )
 
 
 def format_money(amount) -> str:
