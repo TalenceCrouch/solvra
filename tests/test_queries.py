@@ -150,9 +150,8 @@ def test_empty_database_list_commands_show_useful_messages(tmp_path) -> None:
     assert "No refunds found." in refunds.output
 
 
-def test_future_workflow_commands_still_absent() -> None:
+def test_future_risk_command_is_still_absent() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("revenue", "risk"):
-        assert command not in result.output
+    assert "risk" not in result.output

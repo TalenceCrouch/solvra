@@ -203,12 +203,11 @@ def test_events_show_missing_id_exits_nonzero(tmp_path) -> None:
     assert "Webhook event not found" in result.output
 
 
-def test_future_event_workflow_commands_still_absent() -> None:
+def test_future_risk_event_workflow_command_is_still_absent() -> None:
     root = runner.invoke(app, ["--help"])
     events = runner.invoke(app, ["events", "--help"])
 
     assert root.exit_code == 0
     assert events.exit_code == 0
-    for command in ("revenue", "risk"):
-        assert command not in root.output
-        assert command not in events.output
+    assert "risk" not in root.output
+    assert "risk" not in events.output

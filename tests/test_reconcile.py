@@ -243,15 +243,13 @@ def test_reconcile_cli_workflow_works_with_existing_commands(tmp_path) -> None:
     assert run_id in show.output
 
 
-def test_future_revenue_and_risk_commands_are_still_absent() -> None:
+def test_future_risk_command_is_still_absent() -> None:
     root = runner.invoke(app, ["--help"])
     reconcile = runner.invoke(app, ["reconcile", "--help"])
 
     assert root.exit_code == 0
     assert reconcile.exit_code == 0
-    for command in ("revenue", "risk"):
-        assert command not in root.output
-        assert command not in reconcile.output
+    assert "risk" not in root.output
+    assert "risk" not in reconcile.output
 
-    assert runner.invoke(app, ["revenue", "summary"]).exit_code != 0
     assert runner.invoke(app, ["risk", "scan"]).exit_code != 0

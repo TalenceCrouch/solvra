@@ -35,6 +35,7 @@ from solvra.reconcile import (
     list_latest_reconciliation_mismatches,
     list_reconciliation_runs,
 )
+from solvra.revenue import RevenueOpsSummary, StatusCount, get_revenue_ops_summary
 
 APP_NAME = "Solvra"
 APP_SUBTITLE = "Echelon Proxy"
@@ -45,6 +46,7 @@ customers_app = typer.Typer(help="Inspect local customer records.")
 refunds_app = typer.Typer(help="Inspect local refund records.")
 events_app = typer.Typer(help="Ingest, inspect, and replay local webhook events.")
 reconcile_app = typer.Typer(help="Create and inspect local reconciliation runs.")
+revenue_app = typer.Typer(help="Summarize local payment operations data.")
 console = Console()
 
 app.add_typer(payments_app, name="payments")
@@ -52,6 +54,7 @@ app.add_typer(customers_app, name="customers")
 app.add_typer(refunds_app, name="refunds")
 app.add_typer(events_app, name="events")
 app.add_typer(reconcile_app, name="reconcile")
+app.add_typer(revenue_app, name="revenue")
 
 
 @app.callback()
@@ -567,6 +570,97 @@ def print_reconciliation_mismatches(
             f"{mismatch.external_id}: {mismatch.mismatch_type} "
             f"{mismatch.entity_type} {mismatch.entity_external_id}",
         )
+
+
+@revenue_app.callback()
+def revenue() -> None:
+    """Summarize local payment operations data."""
+
+
+@revenue_app.command("summary")
+def show_revenue_summary() -> None:
+    """Show a read-only local revenue and operations summary."""
+    summary = get_revenue_ops_summary()
+    print_revenue_ops_summary(summary)
+
+
+def print_revenue_ops_summary(summary: RevenueOpsSummary) -> None:
+    revenue_table = Table.grid(padding=(0, 2))
+    revenue_table.add_column(style="bold")
+    revenue_table.add_column()
+    revenue_table.add_row(
+        "gross payment amount", format_money(summary.gross_payment_amount)
+    )
+    revenue_table.add_row(
+        "total refund amount", format_money(summary.total_refund_amount)
+    )
+    revenue_table.add_row("net amount", format_money(summary.net_amount))
+    revenue_table.add_row("currency", summary.currency or "")
+    revenue_table.add_row("payment count", str(summary.payment_count))
+    revenue_table.add_row("refund count", str(summary.refund_count))
+    console.print(Panel(revenue_table, title="Revenue"))
+
+    operations_table = Table.grid(padding=(0, 2))
+    operations_table.add_column(style="bold")
+    operations_table.add_column()
+    operations_table.add_row("customer count", str(summary.customer_count))
+    operations_table.add_row(
+        "merchant account count", str(summary.merchant_account_count)
+    )
+    operations_table.add_row("webhook event count", str(summary.webhook_event_count))
+    operations_table.add_row(
+        "reconciliation run count", str(summary.reconciliation_run_count)
+    )
+    operations_table.add_row(
+        "reconciliation mismatch count",
+        str(summary.reconciliation_mismatch_count),
+    )
+    console.print(Panel(operations_table, title="Operations"))
+
+    reconciliation_table = Table.grid(padding=(0, 2))
+    reconciliation_table.add_column(style="bold")
+    reconciliation_table.add_column()
+    reconciliation_table.add_row(
+        "latest run ID",
+        summary.latest_reconciliation_run_id or "not available",
+    )
+    reconciliation_table.add_row(
+        "latest status",
+        summary.latest_reconciliation_status or "not available",
+    )
+    reconciliation_table.add_row(
+        "latest mismatch count",
+        (
+            str(summary.latest_reconciliation_mismatch_count)
+            if summary.latest_reconciliation_mismatch_count is not None
+            else "not available"
+        ),
+    )
+    reconciliation_table.add_row(
+        "latest completed",
+        format_optional_timestamp(summary.latest_reconciliation_completed_at)
+        or "not available",
+    )
+    console.print(Panel(reconciliation_table, title="Reconciliation"))
+
+    print_revenue_breakdown("Payment status breakdown", summary.payment_statuses)
+    print_revenue_breakdown("Refund status breakdown", summary.refund_statuses)
+    print_revenue_breakdown("Webhook event type breakdown", summary.webhook_event_types)
+
+    if summary.payment_count == 0:
+        console.print("No payment data found yet.")
+
+
+def print_revenue_breakdown(title: str, rows: list[StatusCount]) -> None:
+    table = Table(title=title, padding=(0, 0))
+    table.add_column("status or type")
+    table.add_column("count", justify="right")
+    if rows:
+        for row in rows:
+            table.add_row(row.label, str(row.count))
+    else:
+        table.add_row("none", "0")
+    console.print(table)
 
 
 def format_money(amount) -> str:
