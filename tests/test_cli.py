@@ -52,8 +52,8 @@ def test_cli_does_not_expose_future_workflow_commands() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("revenue", "risk"):
-        assert command not in result.output
+    assert "revenue" in result.output
+    assert "risk" not in result.output
 
 
 def test_query_command_groups_appear_in_cli_help() -> None:
