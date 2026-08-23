@@ -36,6 +36,7 @@ from solvra.reconcile import (
     list_reconciliation_runs,
 )
 from solvra.revenue import RevenueOpsSummary, StatusCount, get_revenue_ops_summary
+from solvra.risk import RiskScanResult, scan_local_risks
 
 APP_NAME = "Solvra"
 APP_SUBTITLE = "Echelon Proxy"
@@ -47,6 +48,7 @@ refunds_app = typer.Typer(help="Inspect local refund records.")
 events_app = typer.Typer(help="Ingest, inspect, and replay local webhook events.")
 reconcile_app = typer.Typer(help="Create and inspect local reconciliation runs.")
 revenue_app = typer.Typer(help="Summarize local payment operations data.")
+risk_app = typer.Typer(help="Scan local payment operations risk signals.")
 console = Console()
 
 app.add_typer(payments_app, name="payments")
@@ -55,6 +57,7 @@ app.add_typer(refunds_app, name="refunds")
 app.add_typer(events_app, name="events")
 app.add_typer(reconcile_app, name="reconcile")
 app.add_typer(revenue_app, name="revenue")
+app.add_typer(risk_app, name="risk")
 
 
 @app.callback()
@@ -661,6 +664,56 @@ def print_revenue_breakdown(title: str, rows: list[StatusCount]) -> None:
     else:
         table.add_row("none", "0")
     console.print(table)
+
+
+@risk_app.callback()
+def risk() -> None:
+    """Scan local payment operations risk signals."""
+
+
+@risk_app.command("scan")
+def scan_risks() -> None:
+    """Show a read-only scan of local operational risk signals."""
+    result = scan_local_risks()
+    print_risk_scan(result)
+
+
+def print_risk_scan(result: RiskScanResult) -> None:
+    summary_table = Table.grid(padding=(0, 2))
+    summary_table.add_column(style="bold")
+    summary_table.add_column()
+    summary_table.add_row("risk level", result.risk_level)
+    summary_table.add_row("risk signal count", str(len(result.findings)))
+    summary_table.add_row("payments", str(result.payment_count))
+    summary_table.add_row("refunds", str(result.refund_count))
+    summary_table.add_row("customers", str(result.customer_count))
+    summary_table.add_row("webhook events", str(result.webhook_event_count))
+    summary_table.add_row("reconciliation runs", str(result.reconciliation_run_count))
+    summary_table.add_row(
+        "reconciliation mismatches",
+        str(result.reconciliation_mismatch_count),
+    )
+    console.print(Panel(summary_table, title="Risk Summary"))
+
+    if result.findings:
+        table = Table(title="Signals", padding=(0, 0))
+        table.add_column("severity", no_wrap=True)
+        table.add_column("category", no_wrap=True)
+        table.add_column("related entity")
+        table.add_column("message")
+        for finding in result.findings:
+            table.add_row(
+                finding.severity,
+                finding.category,
+                finding.related_entity or "",
+                finding.message,
+            )
+        console.print(table)
+    else:
+        console.print("No local risk signals found.")
+
+    review = "\n".join(result.recommendations) or "No review required."
+    console.print(Panel(review, title="Recommended Review"))
 
 
 def format_money(amount) -> str:
