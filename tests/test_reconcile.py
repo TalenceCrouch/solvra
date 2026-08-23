@@ -243,13 +243,11 @@ def test_reconcile_cli_workflow_works_with_existing_commands(tmp_path) -> None:
     assert run_id in show.output
 
 
-def test_future_risk_command_is_still_absent() -> None:
+def test_risk_command_is_not_nested_under_reconcile() -> None:
     root = runner.invoke(app, ["--help"])
     reconcile = runner.invoke(app, ["reconcile", "--help"])
 
     assert root.exit_code == 0
     assert reconcile.exit_code == 0
-    assert "risk" not in root.output
+    assert "risk" in root.output
     assert "risk" not in reconcile.output
-
-    assert runner.invoke(app, ["risk", "scan"]).exit_code != 0

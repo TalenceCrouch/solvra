@@ -212,13 +212,11 @@ def test_existing_cli_workflow_still_works(tmp_path) -> None:
         assert expected in result.output
 
 
-def test_future_risk_command_is_still_absent() -> None:
+def test_risk_command_is_not_nested_under_events() -> None:
     root = runner.invoke(app, ["--help"])
     events = runner.invoke(app, ["events", "--help"])
 
     assert root.exit_code == 0
     assert events.exit_code == 0
-    assert "risk" not in root.output
+    assert "risk" in root.output
     assert "risk" not in events.output
-
-    assert runner.invoke(app, ["risk", "scan"]).exit_code != 0
